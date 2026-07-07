@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตรวจสอบชั่วโมงค้างสำหรับนักเรียน</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background: #f4f6f9; color: #333; padding: 20px; display: flex; justify-content: center; }
+        .container { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 700px; padding: 30px; }
+        h1 { text-align: center; color: #1e293b; margin-bottom: 5px; font-size: 24px; }
+        .subtitle { text-align: center; color: #64748b; margin-bottom: 25px; font-size: 14px; }
+        .search-box { margin-bottom: 20px; width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; }
+        .table-wrapper { overflow-x: auto; }
+        .student-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .student-table th { background: #334155; color: white; padding: 14px 10px; font-size: 15px; }
+        .student-table td { padding: 14px 10px; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+        .student-table tr:hover { background: #f8fafc; }
+        .hours-badge { background: #ef4444; color: white; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; }
+        .hours-badge.clear { background: #10b981; }
+        .loading { text-align: center; padding: 20px; color: #64748b; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔍 ระบบตรวจสอบชั่วโมงค้าง (สำหรับนักเรียน)</h1>
+    <div class="subtitle">นักเรียนสามารถพิมพ์ค้นหาชื่อ หรือรหัส เพื่อดูชั่วโมงที่ต้องแก้ไขเองตนเองได้ทันที</div>
+
+    <!-- ช่องค้นหา -->
+    <input type="text" id="searchInp" class="search-box" placeholder="🔎 พิมพ์ รหัส หรือ ชื่อ-นามสกุล เพื่อค้นหา..." oninput="filterStudents()">
+
+    <!-- ตารางแสดงข้อมูล -->
+    <div class="table-wrapper">
+        <div id="loadingText" class="loading">⏳ กำลังโหลดข้อมูลจากคุณครู...</div>
+        <table class="student-table" id="mainTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">รหัส/เลขที่</th>
+                    <th style="width: 45%;">ชื่อ - นามสกุล</th>
+                    <th style="width: 30%;">ชั่วโมงที่ติดค้าง</th>
+                </tr>
+            </thead>
+            <tbody id="studentList"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // ฝังรหัส Google Sheets ของคุณครูเรียบร้อยแล้วครับ
+    const SHEET_ID = '1cxOHHvXGHtkZMoT_ggChidTkGtvzGgxRGrG17yI7mWI'; 
+    const SPREADSHEET_URL = `https://google.com{SHEET_ID}/gviz/tq?tqx=out:json`;
+    let students = [];
+
+    async function fetchData() {
+        try {
+            const response = await fetch(SPREADSHEET_URL);
+            const text = await response.text();
+            const jsonText = text.substring(47, text.length - 2);
+            const json = JSON.parse(jsonText);
+            const rows = json.table.rows;
+
+            students = rows.map(row => {
+                return {
+                    id: row.c[0] && row.c[0].v !== null ? row.c[0].v : '-',
+                    name: row.c[1] && row.c[1].v !== null ? row.c[1].v : '-',
+                    hours: row.c[2] && row.c[2].v !== null ? parseFloat(row.c[2].v) : 0
+                };
+            });
+
+            document.getElementById('loadingText').style.display = 'none';
+            document.getElementById('mainTable').style.display = 'table';
+            renderStudents(students);
+        } catch (error) {
+            document.getElementById('loadingText').innerText = '❌ เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาตรวจสอบการตั้งค่าแชร์ใน Google Sheets';
+            console.error(error);
+        }
+    }
+
+    function renderStudents(dataList) {
+        let tbody = document.getElementById('studentList');
+        tbody.innerHTML = '';
+
+        dataList.forEach(student => {
+            let row = tbody.insertRow();
+            let badgeClass = student.hours > 0 ? 'hours-badge' : 'hours-badge clear';
+            let hoursText = student.hours > 0 ? `${student.hours} ชม.` : '⚡ เคลียร์แล้ว';
+
+            row.innerHTML = `
+                <td>${student.id}</td>
+                <td><strong>${student.name}</strong></td>
+                <td><span class="${badgeClass}">${hoursText}</span></td>
+            `;
+        });
+
+        if (dataList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:20px;">❌ ไม่พบข้อมูลรายชื่อที่ค้นหา</td></tr>`;
+        }
+    }
+
+    function filterStudents() {
+        let query = document.getElementById('searchInp').value.toLowerCase();
+        let filtered = students.filter(s => 
+            s.name.toString().toLowerCase().includes(query) || 
+            s.id.toString().toLowerCase().includes(query)
+        );
+        renderStudents(filtered);
+    }
+
+    fetchData();
+</script>
+
+</body>
+</html>
