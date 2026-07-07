@@ -25,7 +25,7 @@
 
 <div class="container">
     <h1>🔍 ระบบตรวจสอบชั่วโมงค้าง (สำหรับนักเรียน)</h1>
-    <div class="subtitle">นักเรียนสามารถพิมพ์ค้นหาชื่อ หรือรหัส เพื่อดูชั่วโมงที่ต้องแก้ไขเองตนเองได้ทันที</div>
+    <div class="subtitle">นักเรียนสามารถพิมพ์ค้นหาชื่อ หรือรหัส เพื่อดูชั่วโมงที่ต้องแก้ไของตนเองได้ทันที</div>
 
     <!-- ช่องค้นหา -->
     <input type="text" id="searchInp" class="search-box" placeholder="🔎 พิมพ์ รหัส หรือ ชื่อ-นามสกุล เพื่อค้นหา..." oninput="filterStudents()">
@@ -47,24 +47,26 @@
 </div>
 
 <script>
-    // ฝังรหัส Google Sheets ของคุณครูเรียบร้อยแล้วครับ
-    const SHEET_ID = '1cxOHHvXGHtkZMoT_ggChidTkGtvzGgxRGrG17yI7mWI'; 
-    const SPREADSHEET_URL = `https://google.com{SHEET_ID}/gviz/tq?tqx=out:json`;
+    // อัปเดตลิงก์ดึงข้อมูลจาก Google Sheets เผยแพร่ทางเว็บตัวล่าสุดของคุณครูแล้วครับ
+    const SPREADSHEET_URL = 'https://google.com';
     let students = [];
 
     async function fetchData() {
         try {
             const response = await fetch(SPREADSHEET_URL);
             const text = await response.text();
+            
+            // จัดการตัดข้อความส่วนเกินจากระบบ Google JSON
             const jsonText = text.substring(47, text.length - 2);
             const json = JSON.parse(jsonText);
             const rows = json.table.rows;
 
+            // ตรวจสอบโครงสร้างข้อมูลและนำเข้าตาราง
             students = rows.map(row => {
                 return {
-                    id: row.c[0] && row.c[0].v !== null ? row.c[0].v : '-',
-                    name: row.c[1] && row.c[1].v !== null ? row.c[1].v : '-',
-                    hours: row.c[2] && row.c[2].v !== null ? parseFloat(row.c[2].v) : 0
+                    id: row.c && row.c[0] && row.c[0].v !== null ? row.c[0].v : '-',
+                    name: row.c && row.c[1] && row.c[1].v !== null ? row.c[1].v : '-',
+                    hours: row.c && row.c[2] && row.c[2].v !== null ? parseFloat(row.c[2].v) : 0
                 };
             });
 
@@ -72,7 +74,7 @@
             document.getElementById('mainTable').style.display = 'table';
             renderStudents(students);
         } catch (error) {
-            document.getElementById('loadingText').innerText = '❌ เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาตรวจสอบการตั้งค่าแชร์ใน Google Sheets';
+            document.getElementById('loadingText').innerText = '❌ เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาตรวจสอบการตั้งค่าหัวตารางใน Google Sheets';
             console.error(error);
         }
     }
